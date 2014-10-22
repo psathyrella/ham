@@ -5,14 +5,14 @@ before_install:
   ## Deal with stupid issue on the shippable/minv2 docker image
   - sudo dpkg-divert --local --rename /usr/bin/ischroot && sudo ln -sf /bin/true /usr/bin/ischroot
   - sudo apt-get upgrade -y
-  - sudo apt-get install -y build-essential libboost-all-dev
+  - sudo apt-get autoclean
+  - sudo apt-get -f install -y build-essential libboost-all-dev
   - sudo apt-get install -y scons
   - sudo apt-get autoremove -y
-  - sudo apt-get autoclean
   - git config --global user.name "Erick Matsen"
   - git config --global user.email "matsen@fhcrc.org"
 
-cache: false
+cache: true
 
 install:
   - scons
