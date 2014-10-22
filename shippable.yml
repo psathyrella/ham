@@ -1,0 +1,20 @@
+language: python
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get upgrade -y
+  - sudo apt-get install -y scons
+  - sudo apt-get autoremove -y
+  - sudo apt-get autoclean
+  - git config --global user.name "Erick Matsen"
+  - git config --global user.email "matsen@fhcrc.org"
+
+cache: true
+
+install:
+  - scons
+
+notifications:
+  email:
+    - matsen@fhcrc.org
+
