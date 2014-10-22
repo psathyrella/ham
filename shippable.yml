@@ -8,8 +8,6 @@ before_install:
   - git config --global user.name "Erick Matsen"
   - git config --global user.email "matsen@fhcrc.org"
 
-cache: true
-
 install:
   - scons
 
