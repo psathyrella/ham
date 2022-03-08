@@ -56,7 +56,7 @@ Glomerator::Glomerator(HMMHolder &hmms, GermLines &gl, vector<vector<Sequence> >
 
 // ----------------------------------------------------------------------------------------
 Glomerator::~Glomerator() {
-  cout << FinalString() << endl;
+  cout << FinalString(true) << endl;
   WriteCacheFile();
   fclose(progress_file_);
   remove((args_->outfile() + ".progress").c_str());
@@ -129,7 +129,7 @@ void Glomerator::ReadCacheFile() {
   }
   line.erase(remove(line.begin(), line.end(), '\r'), line.end());
   vector<string> headstrs(SplitString(line, ","));
-  assert(headstrs[0].find("unique_ids") == 0);
+  assert(headstrs[0].find("unique_ids") == 0);  // these have to match the line in WriteCacheFile(), as well as partition_cachefile_headers in utils.py
   assert(headstrs[1].find("logprob") == 0);
   assert(headstrs[2].find("naive_seq") == 0);
   assert(headstrs[3].find("naive_hfrac") == 0);
@@ -195,7 +195,7 @@ void Glomerator::WriteCacheFile() {
   if(!log_prob_ofs.is_open())
     throw runtime_error("couldn't open output cache file " + args_->output_cachefname() + "\n");
 
-  log_prob_ofs << "unique_ids,logprob,naive_seq,naive_hfrac,errors" << endl;
+  log_prob_ofs << "unique_ids,logprob,naive_seq,naive_hfrac,errors" << endl;  // these have to match the line in ReadCacheFile(), as well as partition_cachefile_headers in utils.py
   log_prob_ofs << setprecision(20);
 
   set<string> keys_to_cache;
@@ -253,7 +253,7 @@ void Glomerator::WritePartitions(ClusterPath &cp) {
 
 // ----------------------------------------------------------------------------------------
 void Glomerator::WriteAnnotations(ClusterPath &cp) {
-  cout << "DEPRECATED" << endl;  // for somewhat technical reasons -- it still basically works (see notes in partitiondriver.py)
+  cout << "DEPRECATED" << endl;  // for somewhat technical reasons -- it still basically works (see notes in partitiondriver.py) UPDATE I can't find any notes about this in partitiondriver.py, but I think the basic deal is I'm running a whole separate bcrham process (after I'm done partitioning) to get the annotations. I think one (perhaps the main?) reason was that translation is really complicated, but for the final annotations we typically want the real full cluster calculation
   clock_t run_start(clock());
   cout << "      calculating and writing annotations" << endl;
   ofstream annotation_ofs;
@@ -311,38 +311,36 @@ string Glomerator::CacheSizeString() {
 }
 
 // ----------------------------------------------------------------------------------------
-string Glomerator::FinalString() {
+string Glomerator::FinalString(bool newline) {
     char buffer[2000];
-    sprintf(buffer, "        calcd:   vtb %-4d  fwd %-4d  hfrac %-8d\n        merged:  hfrac %-4d lratio %-4d", n_vtb_calculated_, n_fwd_calculated_, n_hfrac_calculated_, n_hfrac_merges_, n_lratio_merges_);
+    sprintf(buffer, "        calcd:   vtb %-4d  fwd %-4d  hfrac %-8d%s        merged:  hfrac %-4d lratio %-4d", n_vtb_calculated_, n_fwd_calculated_, n_hfrac_calculated_, newline ? "\n" : "", n_hfrac_merges_, n_lratio_merges_);
     return string(buffer);
+}
+
+// ----------------------------------------------------------------------------------------
+string Glomerator::GetStatusStr(time_t current_time) {
+  char timebuf[2000];
+  strftime(timebuf, 2000, "%b %d %T", localtime(&current_time));
+  stringstream ss;
+  ss << "      " << timebuf;
+  ss << "    " << setw(4) << current_partition_->size() << " clusters";
+  ss << "    " << setw(9) << GetRss() << " / " << setw(1) << GetMemTot() << " kB = " << setw(6) << setprecision(3) << 100. * float(GetRss()) / GetMemTot() << " %";
+  ss << "   " << FinalString(false);
+  ss << "     " << ClusterSizeString(current_partition_).c_str();
+  ss << endl;
+  return ss.str();
 }
 
 // ----------------------------------------------------------------------------------------
 void Glomerator::WriteStatus() {
 
-  // // ----------------------------------------------------------------------------------------
-  // // print memory usage
-  // ifstream smapfs("/proc/self/smaps");
-  // string tmpline;
-  // cout << "contents of /proc/self/smaps:" << endl;
-  // while(getline(smapfs, tmpline)) {
-  //   cout << "MEM " << tmpline << endl;
-  // }
-  // cout << endl;
-  // // ----------------------------------------------------------------------------------------
-
   // cout << CacheSizeString() << endl;
   time_t current_time;
   time(&current_time);
-  if(difftime(current_time, last_status_write_time_) > 300) {  // write something every five minutes
-    char buffer[2000];
-    strftime(buffer, 2000, "%b %d %T", localtime(&current_time));  // %H:%M
-    // fprintf(progress_file_, "      %s    %4d clusters    calcd  fwd %-4d   vtb %-4d   hfrac %-8d    merged  hfrac %-4d\n", buffer, (int)path_->CurrentPartition().size(), n_fwd_calculated_, n_vtb_calculated_);
-    fprintf(progress_file_, "      %s    %4d clusters", buffer, (int)current_partition_->size());
-    fprintf(progress_file_, "   %s", FinalString().c_str());
-
-    fprintf(progress_file_, "     %s\n", ClusterSizeString(current_partition_).c_str());
-
+  if(difftime(current_time, last_status_write_time_) > 30) {  // write something every x seconds (if it crashes, partitiondriver prints the contents to stdout)
+    string status_str(GetStatusStr(current_time));
+    // cout << status_str;
+    fprintf(progress_file_, "%s", status_str.c_str());
     fflush(progress_file_);
     last_status_write_time_ = current_time;
   }
@@ -359,9 +357,28 @@ string Glomerator::ParentalString(pair<string, string> *parents) {
 
 // ----------------------------------------------------------------------------------------
 // count the number of members in a cluster's colon-separated name string
-int Glomerator::CountMembers(string namestr) {
+int Glomerator::CountMembers(string namestr, bool exclude_extra_seeds) {
   int n_colons = (int)count(namestr.begin(), namestr.end(), ':');
-  return n_colons + 1;
+  int n_members(n_colons + 1);
+  if(exclude_extra_seeds && args_->seed_unique_id() != "") {  // i'm adding this option long afterwards and remember nothing about this code, so there could be something already that could accomplish this
+    vector<string> namevector(SplitString(namestr, ":"));
+    int n_seeds = (int)count(namevector.begin(), namevector.end(), args_->seed_unique_id());
+    if(n_seeds > 0)
+      n_members -= n_seeds - 1;
+  }
+  return n_members;
+}
+
+// ----------------------------------------------------------------------------------------
+// count the number of members in a cluster's colon-separated name string
+unsigned Glomerator::LargestClusterSize(Partition &partition) {
+  unsigned largest_cluster_size(0);
+  for(auto &cluster : partition) {
+    unsigned cluster_size = (unsigned)CountMembers(cluster);  // damnit, I wish I remembered why I made CountMembers() return a signed one
+    if(largest_cluster_size == 0 or cluster_size > largest_cluster_size)
+      largest_cluster_size = cluster_size;
+  }
+  return largest_cluster_size;
 }
 
 // ----------------------------------------------------------------------------------------
@@ -438,7 +455,7 @@ bool Glomerator::SeedMissing(string queries) {
 double Glomerator::CalculateHfrac(string &seq_a, string &seq_b) {
   ++n_hfrac_calculated_;
   if(seq_a.size() != seq_b.size())
-    throw runtime_error("sequences different length in Glomerator::NaiveHfrac:\n    " + seq_a + "\n    " + seq_b + "\n");
+    throw runtime_error("sequences different length in Glomerator::NaiveHfrac\n    " + to_string(seq_a.size()) + ": " + seq_a + "\n    " + to_string(seq_b.size()) + ": " + seq_b + "\n");
   int distance(0), len_excluding_ambigs(0);
   for(size_t ic=0; ic<seq_a.size(); ++ic) {
     uint8_t ch_a = track_->symbol_index(seq_a.substr(ic, 1));  // kind of hackey remnant left from when naive seqs were Sequence objects
@@ -462,7 +479,7 @@ double Glomerator::NaiveHfrac(string key_a, string key_b) {
   string &seq_a = GetNaiveSeq(key_a);
   string &seq_b = GetNaiveSeq(key_b);
   double hfrac(INFINITY);
-  if(failed_queries_.count(key_a) || failed_queries_.count(key_b))
+  if(seq_a.size() == 0 || seq_b.size() == 0 || failed_queries_.count(key_a) || failed_queries_.count(key_b))  // size 0 means there was no valid path (this *should* get picked up by looking in failed_queries_, but it's not because of translation, and I don't remember how this stuff works nearly well enough at this point to try and fix that)
     return hfrac;
   naive_hfracs_[joint_key] = CalculateHfrac(seq_a, seq_b);
 
@@ -476,12 +493,15 @@ string Glomerator::ChooseSubsetOfNames(string queries, int n_max) {
 
   // assert(seq_info_.count(queries) || tmp_cachefo_.count(queries));
   vector<string> namevector(SplitString(queries, ":"));
+  set<string> nameset(namevector.begin(), namevector.end());
+  if(nameset.size() < unsigned(n_max))  // with seed clustering you can get a lot of duplicate seqs (not just the seed seq), and I *think* this is maybe an ok way to avoid the runtime error below? But i'm adding this long afterwards so i'm not sure
+    n_max = nameset.size();
 
   srand(hash<string>{}(queries));  // make sure we get the same subset each time we pass in the same queries (well, if there's different thresholds for naive_seqs annd logprobs they'll each get their own [very correlated] subset)
 
   // first decide which indices we'll choose
   set<int> ichosen;
-  vector<int> ichosen_vec;  // don't really need both of these... but maybe it's faster
+  vector<int> ichosen_vec;  // don't really need both this and the set... but maybe it's faster
   set<string> chosen_strs;  // make sure we don't choose seed unique id more than once
   for(size_t iname=0; iname<unsigned(n_max); ++iname) {
     int ich(-1);
@@ -489,8 +509,9 @@ string Glomerator::ChooseSubsetOfNames(string queries, int n_max) {
     while(ich < 0 || ichosen.count(ich) || chosen_strs.count(namevector[ich])) {
       ich = rand() % namevector.size();
       ++n_tries;
-      if(n_tries > 1e6)
-	throw runtime_error("too many tries in Glomerator::ChooseSubsetOfNames() -- maybe too many copies of the seed unique id?");
+      if(n_tries > 1e6) {
+	throw runtime_error("too many tries in Glomerator::ChooseSubsetOfNames() -- probably too many copies of some seqs during seed partitioning (choosing " + to_string(n_max) + " of " + to_string(namevector.size()) + " from " + queries);
+      }
     }
     ichosen.insert(ich);
     chosen_strs.insert(namevector[ich]);
@@ -531,7 +552,7 @@ string Glomerator::GetNaiveSeqNameToCalculate(string actual_queries) {
     return naive_seq_name_translations_[actual_queries];
 
   // if cluster is less than half again larger than N, just use <actual_queries>
-  if(CountMembers(actual_queries) < 1.5 * args_->biggest_naive_seq_cluster_to_calculate())  // if <<actual_queries>> is small return all of 'em
+  if(CountMembers(actual_queries, true) < 1.5 * args_->biggest_naive_seq_cluster_to_calculate())  // if <<actual_queries>> is small return all of 'em
     return actual_queries;
 
   // but if it's bigger than this, replace it with a subset of size N
@@ -552,7 +573,7 @@ string Glomerator::GetLogProbNameToCalculate(string queries, int n_max) {
     queries_to_calc = logprob_asymetric_translations_[queries];
   } 
 
-  if(CountMembers(queries_to_calc) > n_max) {
+  if(CountMembers(queries_to_calc, true) > n_max) {
     return ChooseSubsetOfNames(queries_to_calc, n_max);
   } else {
     return queries_to_calc;
@@ -634,8 +655,14 @@ string &Glomerator::GetNaiveSeq(string queries, pair<string, string> *parents) {
   string queries_to_calc = GetNaiveSeqNameToCalculate(queries);
 
   // actually calculate the viterbi path for whatever queries we've decided on
-  if(naive_seqs_.count(queries_to_calc) == 0)
-    naive_seqs_[queries_to_calc] = CalculateNaiveSeq(queries_to_calc);
+  if(naive_seqs_.count(queries_to_calc) == 0) {
+    string tmp_nseq = CalculateNaiveSeq(queries_to_calc);  // some compilers add <queries_to_calc> to <naive_seqs_> *before* calling CalculateNaiveSeq(), which causes that function's check to fail
+    if(tmp_nseq.size() == 0) {
+      cout << "  warning: zero length naive sequence for " << queries_to_calc << endl;
+      return empty_string_;
+    }
+    naive_seqs_[queries_to_calc] = tmp_nseq;
+  }
 
   // if we did some translation, propagate the naive sequence back to the queries we were originally interested in
   if(queries_to_calc != queries)
@@ -1122,16 +1149,34 @@ void Glomerator::Merge(ClusterPath *path) {
   if(qpair.first == INFINITY)  // if there wasn't a good enough hfrac merge
     qpair = FindLRatioMerge(path);
 
+  if(args_->max_cluster_size() > 0) {  // if we were told to stop if any clusters get too big
+    for(auto &cluster : path->CurrentPartition()) {
+      if(unsigned(CountMembers(cluster)) > args_->max_cluster_size()) {
+	printf("    --max-cluster-size: stopping with a cluster of size %u (> %u)\n", unsigned(CountMembers(cluster)), args_->max_cluster_size());
+	path->finished_ = true;
+      }
+    }
+    if(path->finished_)
+      return;
+  }
+
   if(qpair.first == -INFINITY) {  // if there also wasn't a good lratio merge
-    if(args_->n_final_clusters() == 0) {  // default: stop when there's no good lratio merges, i.e. at (well, near) the maximum likelihood partition
+    if(args_->n_final_clusters() == 0 && args_->min_largest_cluster_size() == 0) {  // default: stop when there's no good lratio merges, i.e. at (well, near) the maximum likelihood partition
       path->finished_ = true;
-    } else if(path->CurrentPartition().size() > args_->n_final_clusters()) {
+    } else if((args_->n_final_clusters() > 0 && path->CurrentPartition().size() > args_->n_final_clusters()) ||  // still have more clusters than we were asked for
+	      (args_->min_largest_cluster_size() > 0 && LargestClusterSize(path->CurrentPartition()) < args_->min_largest_cluster_size())) {  // largest cluster is still too small
       if(force_merge_) {  // if we already set force merge on a previous iteration
 	path->finished_ = true;
-	printf("    couldn't merge beyond %lu clusters despite setting force merge\n", path->CurrentPartition().size());
+	if(args_->n_final_clusters() > 0)
+	  printf("    couldn't merge beyond %lu clusters despite setting force merge\n", path->CurrentPartition().size());
+	if(args_->min_largest_cluster_size() > 0)
+	  printf("    couldn't merge past a biggest cluster of %u despite setting force merge\n", LargestClusterSize(path->CurrentPartition()));
       } else {
 	force_merge_ = true;
-	printf("    setting force merge (currently at %lu clusters, requested %u)\n", path->CurrentPartition().size(), args_->n_final_clusters());
+	if(args_->n_final_clusters() > 0)
+	  printf("    setting force merge (currently have %lu clusters, requested %u)\n", path->CurrentPartition().size(), args_->n_final_clusters());
+	if(args_->min_largest_cluster_size() > 0)
+	  printf("    setting force merge (current biggest cluster %u, requested %u)\n", LargestClusterSize(path->CurrentPartition()), args_->min_largest_cluster_size());
       }
     } else {  // we've gotten down to the requested number of clusters, so we can stop (shouldn't be possible to get here, since it'd require somehow missing setting the path to finished in the if clause below)
       path->finished_ = true;
@@ -1165,9 +1210,13 @@ void Glomerator::Merge(ClusterPath *path) {
   //  - but also, it'd probably (maybe?) be ok to clear this cache after a logprob merge, since that would mean we're probably through with all the naive hfrac merges
   //  - or at least remove info for clusters we've merged out of existence
 
-  if(args_->n_final_clusters() > 0 && path->CurrentPartition().size() <= args_->n_final_clusters()) {
+  if((args_->n_final_clusters() > 0 && path->CurrentPartition().size() <= args_->n_final_clusters()) ||
+     (args_->min_largest_cluster_size() > 0 && LargestClusterSize(path->CurrentPartition()) >= args_->min_largest_cluster_size())) {  // largest cluster is still too small
     path->finished_ = true;
-    printf("    finished glomerating to %lu clusters (requested %u))\n", path->CurrentPartition().size(), args_->n_final_clusters());
+    if(args_->n_final_clusters() > 0)
+      printf("    finished glomerating to %lu clusters (requested %u), force merge status %d\n", path->CurrentPartition().size(), args_->n_final_clusters(), force_merge_);
+    if(args_->min_largest_cluster_size() > 0)
+      printf("    finished glomerating to a biggest cluster of %u (requested %u), force merge status %d\n", LargestClusterSize(path->CurrentPartition()), args_->min_largest_cluster_size(), force_merge_);
   }
 }
 

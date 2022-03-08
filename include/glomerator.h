@@ -81,11 +81,13 @@ private:
 
   void PrintPartition(Partition &clusters, string extrastr);
   string CacheSizeString();
-  string FinalString();
+  string FinalString(bool newline=false);
+  string GetStatusStr(time_t current_time);
   void WriteStatus();  // write some progress info to file
 
   string ParentalString(pair<string, string> *parents);
-  int CountMembers(string namestr);
+  int CountMembers(string namestr, bool exclude_extra_seeds=false);
+  unsigned LargestClusterSize(Partition &partition);
   string ClusterSizeString(Partition *partition);
   string JoinNames(string name1, string name2, string delimiter=":");
   string JoinNameStrings(vector<Sequence*> &strlist, string delimiter=":");
@@ -172,6 +174,8 @@ private:
   Partition *current_partition_;  // (a.t.m. only used for writing to status file)
   time_t last_status_write_time_;  // last time that we wrote our progress to a file
   FILE *progress_file_;
+
+  string empty_string_;  // ok this is horrible, but i need to return a reference to an empty string from GetNaiveSeq(), and it's been so long since i edited this code i can't figure out a better way to do it than this
 };
 
 }
