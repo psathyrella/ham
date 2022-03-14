@@ -124,6 +124,8 @@ Result DPHandler::Run(vector<Sequence> seqvector, KBounds kbounds, vector<string
   if(best_kset.v == 0 && best_kset.d == 0) {
     cout << "    no valid paths for query " << seqs.name_str() << endl;
     result.no_path_ = true;
+    if(!args_->dont_rescale_emissions())  // if we rescaled them above, re-rescale the overall mean mute freqs
+      hmms_.UnRescaleOverallMuteFreqs(only_genes);
     return result;
   }
 
