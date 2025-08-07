@@ -30,4 +30,12 @@ for fname in glob.glob(os.getenv('PWD') + '/src/*.cc'):
 env.Library(target='ham', source=sources)
 
 for bname in binary_names:
-    env.Program(target='../' + bname, source=bname + '.cc', LIBS=['ham', 'yaml-cpp', 'gsl', 'gslcblas'], LIBPATH=['.'])
+    # env.Program(target='../' + bname, source=bname + '.cc', LIBS=['ham', 'yaml-cpp', 'gsl', 'gslcblas'], LIBPATH=['.'])
+    env.Program(target='../' + bname, source=bname + '.cc',
+                LIBS=['ham',
+                      File('/usr/lib/x86_64-linux-gnu/libyaml-cpp.a'),
+                      File('/usr/lib/x86_64-linux-gnu/libgsl.a'),
+                      File('/usr/lib/x86_64-linux-gnu/libgslcblas.a'),
+                      ],
+                LIBPATH=['.']
+                )
