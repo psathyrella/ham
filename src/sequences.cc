@@ -67,6 +67,18 @@ void Sequence::Digitize() {
 }
 
 // ----------------------------------------------------------------------------------------
+Sequence& Sequence::operator=(const Sequence& rhs) {
+  if (this != &rhs) {
+    name_ = rhs.name_;
+    header_ = rhs.header_;
+    undigitized_ = rhs.undigitized_;
+    track_ = rhs.track_;
+    seqq_ = rhs.seqq_;
+  }
+  return *this;
+}
+
+// ----------------------------------------------------------------------------------------
 Sequence::~Sequence() {
 }
 

@@ -807,7 +807,7 @@ Query &Glomerator::cachefo(string queries) {
 
       // cout << "    " << tmpvec[is] << "    " << kbounds.stringify() << "   " << scache.mute_freq_ << "   " << cdr3_length << "   ";
       // for(auto &g : only_gene_set)
-      // 	cout << " " << g;
+      //   cout << " " << g;
       // cout << endl;
     }
     // cout << "        final mute freq " << mute_freq_total / tmpvec.size() << endl;
@@ -999,6 +999,7 @@ Partition Glomerator::GetSeededClusters(Partition &partition) {
 // ----------------------------------------------------------------------------------------
 pair<double, Query> Glomerator::FindHfracMerge(ClusterPath *path) {
   double min_hamming_fraction(INFINITY);
+  bool found_merge(false);
   Query min_hamming_merge;
 
   Partition outer_clusters(path->CurrentPartition());  // for plain partitioning, outer loop is over everything in the current partition
@@ -1036,12 +1037,19 @@ pair<double, Query> Glomerator::FindHfracMerge(ClusterPath *path) {
 	continue;
 
       if(hfrac < min_hamming_fraction) {
-	  min_hamming_fraction = hfrac;
-	  min_hamming_merge = GetMergedQuery(key_a, key_b);
+        // NOTE on one machine, the presence of this block, even if it isn't executed, is modifying/corrupting min_hamming_fraction so it no longer equals INFINITY
+        min_hamming_fraction = hfrac;
+        min_hamming_merge = GetMergedQuery(key_a, key_b);
+        found_merge = true;
       }
     }
   }
 
+  if((found_merge && min_hamming_fraction==INFINITY) || (!found_merge and min_hamming_fraction!=INFINITY)) {
+    string message = "found_merge (bool: " + to_string(found_merge) + ") out of sync with min_hamming_fraction value (double: " + to_string(min_hamming_fraction) + "), likely because of compiler or linking issue that is breaking INFINITY comparisons, perhaps due to linking to incompatible libs";
+    message += " (min_hamming_fraction: " + to_string(min_hamming_fraction) + ", min_hamming_fraction==INFINITY: " + to_string((min_hamming_fraction==INFINITY)) + ")";
+    throw runtime_error(message);
+  }
   if(min_hamming_fraction != INFINITY) {  // (note that this is *plus* infinity, but in the lratio fcn it's -INFINITY)
     ++n_hfrac_merges_;
     if(args_->debug())
@@ -1148,6 +1156,8 @@ void Glomerator::Merge(ClusterPath *path) {
   pair<double, Query> qpair = FindHfracMerge(path);
   if(qpair.first == INFINITY)  // if there wasn't a good enough hfrac merge
     qpair = FindLRatioMerge(path);
+  if(qpair.second.name_ == "")
+    throw runtime_error("couldn't find a merge with either hfrac or lratio functions (this shouldn't be possible)");
 
   if(args_->max_cluster_size() > 0) {  // if we were told to stop if any clusters get too big
     for(auto &cluster : path->CurrentPartition()) {

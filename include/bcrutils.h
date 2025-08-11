@@ -118,7 +118,7 @@ public:
 // ----------------------------------------------------------------------------------------
 class KBounds {
 public:
-  KBounds() {}  // need this so we can use stl vectors
+  KBounds() : vmin(0), dmin(0), vmax(0), dmax(0) {}
   KBounds(KSet kmin, KSet kmax) : vmin(kmin.v), dmin(kmin.d), vmax(kmax.v), dmax(kmax.d) {}
   bool equals(KBounds rhs) { return vmin == rhs.vmin && vmax == rhs.vmax && dmin == rhs.dmin && dmax == rhs.dmax; }
   KBounds LogicalOr(KBounds rhs);  // return the "logical OR" of <kb1> and <kb2>, i.e. the area encompassed by either of 'em

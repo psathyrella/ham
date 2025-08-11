@@ -15,6 +15,7 @@ public:
   Sequence(Track* trk, string name, string &undigitized, size_t pos, size_t len);  // create the subsequence from <pos> of length <len>
   Sequence(Sequence &rhs, size_t pos, size_t len);
   Sequence(const Sequence &rhs);
+  Sequence& operator=(const Sequence& rhs);
   ~Sequence();
 
   inline string name() const { return name_; }
