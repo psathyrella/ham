@@ -1156,8 +1156,6 @@ void Glomerator::Merge(ClusterPath *path) {
   pair<double, Query> qpair = FindHfracMerge(path);
   if(qpair.first == INFINITY)  // if there wasn't a good enough hfrac merge
     qpair = FindLRatioMerge(path);
-  if(qpair.second.name_ == "")
-    throw runtime_error("couldn't find a merge with either hfrac or lratio functions (this shouldn't be possible)");
 
   if(args_->max_cluster_size() > 0) {  // if we were told to stop if any clusters get too big
     for(auto &cluster : path->CurrentPartition()) {
