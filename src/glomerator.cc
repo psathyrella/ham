@@ -306,14 +306,14 @@ void Glomerator::PrintPartition(Partition &partition, string extrastr) {
 // ----------------------------------------------------------------------------------------
 string Glomerator::CacheSizeString() {
   char buffer[2000];
-  sprintf(buffer, "      %8zu   %8zu   %8zu   %8zu   %8zu", log_probs_.size(), naive_hfracs_.size(), lratios_.size(), naive_seqs_.size(), errors_.size());
+  snprintf(buffer, sizeof(buffer), "      %8zu   %8zu   %8zu   %8zu   %8zu", log_probs_.size(), naive_hfracs_.size(), lratios_.size(), naive_seqs_.size(), errors_.size());
   return string(buffer);
 }
 
 // ----------------------------------------------------------------------------------------
 string Glomerator::FinalString(bool newline) {
     char buffer[2000];
-    sprintf(buffer, "        calcd:   vtb %-4d  fwd %-4d  hfrac %-8d%s        merged:  hfrac %-4d lratio %-4d", n_vtb_calculated_, n_fwd_calculated_, n_hfrac_calculated_, newline ? "\n" : "", n_hfrac_merges_, n_lratio_merges_);
+    snprintf(buffer, sizeof(buffer), "        calcd:   vtb %-4d  fwd %-4d  hfrac %-8d%s        merged:  hfrac %-4d lratio %-4d", n_vtb_calculated_, n_fwd_calculated_, n_hfrac_calculated_, newline ? "\n" : "", n_hfrac_merges_, n_lratio_merges_);
     return string(buffer);
 }
 

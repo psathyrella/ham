@@ -140,11 +140,11 @@ Result DPHandler::Run(vector<Sequence> seqvector, KBounds kbounds, vector<string
     if(algorithm_ == "viterbi") {
       prob = best_score;
       alg_str = "vtb";
-      sprintf(kstr, "%zu [%zu-%zu)  %zu [%zu-%zu)", best_kset.v, kbounds.vmin, kbounds.vmax, best_kset.d, kbounds.dmin, kbounds.dmax);
+      snprintf(kstr, sizeof(kstr), "%zu [%zu-%zu)  %zu [%zu-%zu)", best_kset.v, kbounds.vmin, kbounds.vmax, best_kset.d, kbounds.dmin, kbounds.dmax);
     } else {
       prob = *total_score;
       alg_str = "fwd";
-      sprintf(kstr, "    [%zu-%zu)     [%zu-%zu)", kbounds.vmin, kbounds.vmax, kbounds.dmin, kbounds.dmax);
+      snprintf(kstr, sizeof(kstr), "    [%zu-%zu)     [%zu-%zu)", kbounds.vmin, kbounds.vmax, kbounds.dmin, kbounds.dmax);
     }
     double cpu_seconds(((clock() - run_start) / (double)CLOCKS_PER_SEC));
     printf("           %s %12.3f   %-25s  %2zuv %2zud %2zuj  %5.2fs   %4zu  %s\n", alg_str.c_str(), prob, kstr,

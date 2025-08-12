@@ -15,7 +15,7 @@ double Trellis::ApproxBytesUsed() {
 // ----------------------------------------------------------------------------------------
 string Trellis::SizeString() {
   char buffer[2000];
-  sprintf(buffer, "%8zu  %8zu  %8zu  %8zu",
+  snprintf(buffer, sizeof(buffer), "%8zu  %8zu  %8zu  %8zu",
 	  viterbi_log_probs_pointer_->size(),
 	  forward_log_probs_pointer_->size(),
 	  viterbi_indices_.size(),
