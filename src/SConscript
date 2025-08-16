@@ -9,8 +9,8 @@ env = Environment(ENV=os.environ)
 # profiling (uh, i think, it's been a while): '-pg', '-g',
 # increase compile time verbosity (e.g. figure out include paths): , '--verbose'
 # increase link time verbosity (e.g. figure out lib paths):, '-Wl,--verbose'
-env.Append(CPPFLAGS =  ['-Ofast', '-std=c++11', '-Wall', '-Wextra', '-pedantic'])
-env.Append(LINKFLAGS = ['-Ofast', '-std=c++11'])
+env.Append(CPPFLAGS =  ['-O3', '-std=c++11', '-Wall', '-Wextra', '-pedantic'])
+env.Append(LINKFLAGS = ['-O3', '-std=c++11'])
 env.Append(CPPPATH = ['../include'])
 env.Append(CPPDEFINES={'STATE_MAX':'500', 'SIZE_MAX':r'\(\(size_t\)-1\)', 'PI':'3.1415926535897932', 'EPS':'1e-6'})  # maybe reduce the state max to something reasonable?
 
