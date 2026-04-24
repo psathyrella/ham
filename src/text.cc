@@ -72,7 +72,7 @@ vector<int> Intify(vector<string> strlist) {
 vector<double> Floatify(vector<string> strlist) {
   vector<double> floatlist;
   for(auto &str : strlist)
-    floatlist.push_back(stof(str));
+    floatlist.push_back(stod(str));
   return floatlist;
 }
 

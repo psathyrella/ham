@@ -149,7 +149,7 @@ void Glomerator::ReadCacheFile() {
 
     string logprob_str(column_list[1]);
     if(logprob_str.size() > 0) {  // NOTE <query> might already be in <log_probs_> (see above), but this won't replace it unless it's actually set in the file (we could also check that they're similar, but since we don't expect them to always be identical, that would be complicated)
-      log_probs_[query] = stof(logprob_str);
+      log_probs_[query] = stod(logprob_str);
       initial_log_probs_.insert(query);
     }
 
@@ -157,7 +157,7 @@ void Glomerator::ReadCacheFile() {
 
     string naive_hfrac_str(column_list[3]);
     if(naive_hfrac_str.size() > 0) {
-      naive_hfracs_[query] = stof(naive_hfrac_str);
+      naive_hfracs_[query] = stod(naive_hfrac_str);
       initial_naive_hfracs_.insert(query);
     }
 
@@ -931,7 +931,7 @@ Query &Glomerator::GetMergedQuery(string name_a, string name_b) {
 				   !InString(args_->seed_unique_id(), joint_name),
 				   joint_only_genes,
 				   ref_a.kbounds_.LogicalOr(ref_b.kbounds_),
-				   (ref_a.seqs_.size()*ref_a.mute_freq_ + ref_b.seqs_.size()*ref_b.mute_freq_) / double(ref_a.seqs_.size() + ref_b.seqs_.size()),  // simple weighted average (doesn't account for different sequence lengths)
+				   (double(ref_a.seqs_.size())*ref_a.mute_freq_ + double(ref_b.seqs_.size())*ref_b.mute_freq_) / double(ref_a.seqs_.size() + ref_b.seqs_.size()),  // simple weighted average (doesn't account for different sequence lengths)
 				   ref_a.cdr3_length_,
 				   name_a,
 				   name_b
