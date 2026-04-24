@@ -109,7 +109,7 @@ Result DPHandler::Run(vector<Sequence> seqvector, KBounds kbounds, vector<string
       RunKSet(seqs, kset, only_genes, &best_scores, &total_scores, &best_genes);
       ++n_run;
       *total_score = AddInLogSpace(total_scores[kset], *total_score);  // sum up the probabilities for each kset, log P_tot = log \sum_i P_k_i
-      if(args_->debug() == 2 && algorithm_ == "forward") printf("            %9.2f (%.1e)  tot: %7.2f\n", total_scores[kset], exp(total_scores[kset]), *total_score);
+      if(args_->debug() == 2 && algorithm_ == "forward") printf("            %12.6f (%.1e)  tot: %12.6f\n", total_scores[kset], exp(total_scores[kset]), *total_score);
       if(best_scores[kset] > best_score) {
         best_score = best_scores[kset];
         best_kset = kset;
@@ -147,7 +147,7 @@ Result DPHandler::Run(vector<Sequence> seqvector, KBounds kbounds, vector<string
       snprintf(kstr, sizeof(kstr), "    [%zu-%zu)     [%zu-%zu)", kbounds.vmin, kbounds.vmax, kbounds.dmin, kbounds.dmax);
     }
     double cpu_seconds(((clock() - run_start) / (double)CLOCKS_PER_SEC));
-    printf("           %s %12.3f   %-25s  %2zuv %2zud %2zuj  %5.2fs   %4zu  %s\n", alg_str.c_str(), prob, kstr,
+    printf("           %s %15.6f   %-25s  %2zuv %2zud %2zuj  %5.2fs   %4zu  %s\n", alg_str.c_str(), prob, kstr,
 	   only_genes["v"].size(), only_genes["d"].size(), only_genes["j"].size(),  // hmms_.NameString(&only_genes, 30)
 	   cpu_seconds, seqs.n_seqs(), seqs.name_str(":").c_str());
 
@@ -452,7 +452,7 @@ void DPHandler::RunKSet(Sequences &seqs, KSet kset, map<string, set<string> > &o
       // add this score to the regional total score
       regional_total_scores[region] = AddInLogSpace(gene_score, regional_total_scores[region]);  // (log a, log b) --> log a+b, i.e. here we are summing probabilities in log space, i.e. a *or* b
       if(args_->debug() == 2 && algorithm_ == "forward")
-        printf("                %6.0e %9.2f  %7.2f  %s  %s\n", exp(gene_score), gene_score, regional_total_scores[region], origin.c_str(), tc.ColorGene(gene).c_str());
+        printf("                %6.0e %12.6f  %12.6f  %s  %s\n", exp(gene_score), gene_score, regional_total_scores[region], origin.c_str(), tc.ColorGene(gene).c_str());
 
       // set best regional scores (and the best gene for this kset)
       if(gene_score > regional_best_scores[region]) {
