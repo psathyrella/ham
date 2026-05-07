@@ -89,6 +89,13 @@ const uint32_t POWER[32][128] = {
 };
 #endif
 
+// fast_softplus(d) = log(1 + exp(d)) via 64K-entry linear-interp LUT.
+// Implemented in src/fast_math.c; mirrored on the Zig side at
+// packages/zig-core/src/ham/fast_math.c. See that file for the design
+// notes (issue #366 item 3.2): replaces glibc log+exp in AddInLogSpace
+// with ~22-40% per-call speedup, accuracy 6.5e-9 max abs over [-30, 0].
+extern "C" double fast_softplus(double d);
+
 //! Takes two logd values and adds them together, i.e. takes (log a, log b) --> log a+b
 //! i.e. a *or* b
 //! \param first  log'd Double value
@@ -101,9 +108,9 @@ T AddInLogSpace(T first, T second) {
   } else if(second == -INFINITY) {
     return first;
   } else if(first > second) {
-    return first + log(1 + exp(second - first));
+    return first + fast_softplus(second - first);
   } else {
-    return second + log(1 + exp(first - second));
+    return second + fast_softplus(first - second);
   }
 }
 
