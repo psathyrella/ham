@@ -249,16 +249,16 @@ void Result::Finalize(GermLines &gl, map<string, double> &unsorted_per_gene_supp
 
   // sort vector of events by score (i.e. find the best path over ksets)
   // STABLE descending sort so tied events resolve to the first-pushed kset
-  // (deterministic across runs and backends). RecoEvent::score_ is float
-  // (intentionally — single-precision storage matches the historical hmm
-  // contract), so two ksets with f64 scores within ~1e-6 collapse to identical
-  // float values; an unstable sort then picks an algorithm-dependent winner
-  // that disagrees between C++ introsort and Zig pdqsort. Stable sort + a
-  // descending comparator picks the first-pushed tied event in both backends
-  // (push order is the kset reverse-iteration k_v=vmax-1..vmin, k_d=dmax-1..dmin
-  // — see DPHandler::Run), which propagates through naive_seq → hfrac → cluster
-  // merges and was the proximate cause of the 30k Zig-vs-C++ partition divergence
-  // reported in partis issue #375.
+  // (deterministic across runs and backends). With RecoEvent::score_ stored as
+  // double (partis issue #377), genuine f32 collapse no longer happens — but
+  // two ksets can still produce machine-epsilon-equal f64 scores, and we still
+  // want the tie-break to be deterministic across stdlib sort algorithms (C++
+  // introsort vs. Zig pdqsort, which pick different winners on ties). Stable
+  // sort + a descending comparator picks the first-pushed tied event in both
+  // backends (push order is the kset reverse-iteration k_v=vmax-1..vmin,
+  // k_d=dmax-1..dmin — see DPHandler::Run). Originally added in #375 to mask
+  // an upstream f32-narrowing collapse; #377 fixed the narrowings, this kept
+  // the deterministic-tie-break invariant.
   stable_sort(events_.begin(), events_.end(), [](const RecoEvent &a, const RecoEvent &b) { return a.score_ > b.score_; });
   best_event_ = events_[0];
 
