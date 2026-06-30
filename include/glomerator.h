@@ -24,7 +24,7 @@ typedef pair<vector<string>, vector<string> > ClusterPair;
 class Query {
 public:
   Query() {}
-  Query(string name, vector<Sequence*> seqs, bool seed_missing, vector<string> only_genes, KBounds kbounds, float mute_freq, size_t cdr3_length, string p1="", string p2="") :
+  Query(string name, vector<Sequence*> seqs, bool seed_missing, vector<string> only_genes, KBounds kbounds, double mute_freq, size_t cdr3_length, string p1="", string p2="") :
     name_(name),
     seqs_(seqs),
     seed_missing_(seed_missing),
@@ -47,7 +47,7 @@ public:
   bool seed_missing_;
   vector<string> only_genes_;
   KBounds kbounds_;
-  float mute_freq_;
+  double mute_freq_;
   size_t cdr3_length_;
   pair<string, string> parents_;  // queries that were joined to make this
 };

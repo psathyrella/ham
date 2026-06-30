@@ -83,7 +83,7 @@ public:
   map<string, size_t> deletions_;
   map<string, string> insertions_;
   string naive_seq_;
-  float score_;
+  double score_;
   int cyst_position_, tryp_position_, cdr3_length_;
   map<string, vector<SupportPair> >  per_gene_support_;  // for each region, a sorted list of (gene, logprob) pairs
 
