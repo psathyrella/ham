@@ -9,7 +9,8 @@ env = Environment(ENV=os.environ)
 # profiling (uh, i think, it's been a while): '-pg', '-g',
 # increase compile time verbosity (e.g. figure out include paths): , '--verbose'
 # increase link time verbosity (e.g. figure out lib paths):, '-Wl,--verbose'
-env.Append(CPPFLAGS =  ['-O3', '-std=c++11', '-Wall', '-Wextra', '-pedantic'])
+env.Append(CPPFLAGS =  ['-O3', '-Wall', '-Wextra', '-pedantic'])  # NOTE -std=c++11 goes in CXXFLAGS (C++ only), not CPPFLAGS, else it's applied to the C source fast_math.c too (gcc warns, but clang/macOS errors: "'-std=c++11' not allowed with 'C'")
+env.Append(CXXFLAGS = ['-std=c++11'])
 env.Append(LINKFLAGS = ['-O3', '-std=c++11'])
 env.Append(CPPPATH = ['../include'])
 
