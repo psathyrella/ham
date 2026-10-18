@@ -30,9 +30,10 @@
  * the partis-test gate, but bit-equality between backends is cheap to
  * keep so we keep it.)
  *
- * Mirrored on the Zig side at packages/zig-core/src/ham/fast_math.c.
- * Both sides MUST stay in sync; the table is data so cross-backend
- * parity is trivial as long as the same source compiles to both.
+ * Mirrored between packages/ham/src/fast_math.c and
+ * packages/zig-core/src/ham/fast_math.c. Both sides MUST stay in sync;
+ * the table is data so cross-backend parity is trivial as long as the
+ * same source compiles to both.
  */
 #include <math.h>
 
@@ -73,6 +74,16 @@ double fast_softplus(double d) {
     /* d ∈ [LUT_LO, 0] — index in [0, LUT_N] */
     double t = (d - LUT_LO) * LUT_SCALE;
     int i = (int) t;
+    /* Clamp `i` so `i+1` stays in bounds. At d == 0 (or d so close to 0
+     * that float rounding gives t == LUT_N), the unclamped i would equal
+     * LUT_N and the `softplus_lut[i+1]` read would be one past the array.
+     * The production result came out right only because `frac == 0` zeroed
+     * the interpolation term -- and that masking holds only while the
+     * out-of-bounds double happens to be finite, since 0.0 * (inf - y0) and
+     * 0.0 * (NaN - y0) are both NaN. Debug-mode bounds checks fired. With
+     * the clamp, frac becomes 1.0 at the boundary and y0 + 1.0*(y1-y0) =
+     * y1 = softplus_lut[LUT_N], identical to the unclamped value. */
+    if (i >= LUT_N) i = LUT_N - 1;
     double frac = t - (double) i;
     double y0 = softplus_lut[i];
     double y1 = softplus_lut[i + 1];
