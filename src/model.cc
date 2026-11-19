@@ -120,7 +120,7 @@ void Model::RescaleOverallMuteFreq(double overall_mute_freq) {
     throw runtime_error("model.cc: tried to rescale overall mut freqs with zero original_overall_mute_freq_");
 
   // cout << "rescaling " << name_ << " from " << original_overall_mute_freq_ << " to " << overall_mute_freq << endl;
-  double factor = max(0.01, overall_mute_freq) / original_overall_mute_freq_;  // NOTE the 1% is kind of a hack (to protect against zero) -- but it's roughly equal to the uncertainty on our mute freq estimates, so it's reasonable
+  double factor = max(0.001, overall_mute_freq) / original_overall_mute_freq_;  // NOTE the 0.1% floor protects against zero (1% overstated mutation in low shm samples)
   // if(factor <= 0.0 || factor > 15.)  // eh, i no longer think this indicates a problem -- it just means we're doing a sequence with much higher mfreq than the average
   //   cout << "very large factor in Model::RescaleOverallMuteFreq: " << to_string(factor) << endl;
   for(auto &state : states_) {
